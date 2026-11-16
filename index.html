@@ -65,16 +65,25 @@
     </dl>
   </section>
 
-  <section id="files-section">
-    <h2>Files (step 2d)</h2>
-    <p class="sub" style="margin-bottom:8px">Upload random test data of a given size, or pick a file. Each file is stored as a CloudKit asset and checked by SHA-256 on download.</p>
-    <div class="row" id="sizes" style="margin-bottom:8px"></div>
-    <div class="row" style="margin-bottom:10px">
-      <input type="file" id="pick">
-      <button id="refresh">Refresh list</button>
-      <button id="diag">Diagnose</button>
+  <section id="gamedata-section">
+    <h2>Game data (iCloud Drive)</h2>
+    <div id="gd-banner" hidden style="background:#3a3220;border-radius:10px;padding:10px;margin-bottom:10px">
+      <div id="gd-banner-text" style="margin-bottom:8px"></div>
+      <button id="gd-banner-btn">Choose file</button>
     </div>
-    <div id="files"></div>
+    <div class="row" style="margin-bottom:10px">
+      <input type="file" id="gd-pick">
+    </div>
+    <dl>
+      <dt>Stored locally</dt><dd id="gd-local">–</dd>
+      <dt>Storage</dt><dd id="gd-storage">–</dd>
+      <dt>Published</dt><dd id="gd-published">–</dd>
+    </dl>
+    <p class="sub" style="margin:12px 0 8px">Publish a data version (normally done by the import script on the Mac):</p>
+    <div class="row">
+      <input id="gd-version" placeholder="e.g. 3.8.0-test1" autocomplete="off">
+      <button id="gd-publish">Publish version</button>
+    </div>
   </section>
 
   <section>
@@ -82,9 +91,9 @@
     <div id="log"></div>
   </section>
 
-  <script src="config.js?v=6"></script>
-  <script src="app.js?v=6"></script>
-  <script src="files.js?v=6"></script>
+  <script src="config.js?v=7"></script>
+  <script src="app.js?v=7"></script>
+  <script src="gamedata.js?v=7"></script>
   <script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js" async></script>
 </body>
 </html>
