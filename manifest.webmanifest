@@ -1,0 +1,9 @@
+{
+  "name": "iCloud Probe",
+  "short_name": "iCloud Probe",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121218",
+  "theme_color": "#121218"
+}
