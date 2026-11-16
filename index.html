@@ -65,6 +65,17 @@
     </dl>
   </section>
 
+  <section id="files-section">
+    <h2>Files (step 2d)</h2>
+    <p class="sub" style="margin-bottom:8px">Upload random test data of a given size, or pick a file. Each file is stored as a CloudKit asset and checked by SHA-256 on download.</p>
+    <div class="row" id="sizes" style="margin-bottom:8px"></div>
+    <div class="row" style="margin-bottom:10px">
+      <input type="file" id="pick">
+      <button id="refresh">Refresh list</button>
+    </div>
+    <div id="files"></div>
+  </section>
+
   <section>
     <h2>Log</h2>
     <div id="log"></div>
@@ -72,6 +83,7 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script src="files.js"></script>
   <script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js" async></script>
 </body>
 </html>

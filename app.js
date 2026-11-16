@@ -25,6 +25,8 @@
     $("user").textContent = on ? (identity.userRecordName || "signed in") : "not signed in";
     $("save").disabled = !on;
     $("load").disabled = !on;
+    window.PROBE = { db: on ? db : null, log };
+    window.dispatchEvent(new CustomEvent("probe-auth", { detail: on }));
   }
 
   function showRecord(rec) {
