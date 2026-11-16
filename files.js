@@ -97,9 +97,36 @@
       }
     };
     await step("no-asset", { name: { value: "diag" }, size: { value: 0 }, sha256: { value: "-" } });
-    const tiny = new File([randomBlob(1024)], "diag-1KB.bin", { type: "application/octet-stream" });
-    await step("asset-1KB", { name: { value: "diag-1KB.bin" }, size: { value: 1024 }, sha256: { value: "-" }, file: { value: tiny } });
+    // Content type decides whether the browser sends a CORS preflight to the upload host.
+    for (const [label, type] of [["octet", "application/octet-stream"], ["notype", ""], ["text", "text/plain"]]) {
+      const tiny = new File([randomBlob(1024)], "diag-1KB.bin", { type });
+      xhrTrace.length = 0;
+      await step("asset-1KB-" + label, { name: { value: "diag-1KB.bin" }, size: { value: 1024 }, sha256: { value: "-" }, file: { value: tiny } });
+      for (const t of xhrTrace) log(`  ${t}`);
+    }
   }
+
+  // Trace CloudKit's XHR requests (it uses XMLHttpRequest internally) to see which request fails.
+  const xhrTrace = [];
+  (function traceXHR() {
+    const open = XMLHttpRequest.prototype.open;
+    const send = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this._probe = { method, host: (() => { try { const u = new URL(url, location.href); return u.host + u.pathname.split("/").slice(0, 4).join("/"); } catch (e) { return String(url).slice(0, 80); } })() };
+      return open.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function (body) {
+      const p = this._probe || {};
+      const t0 = performance.now();
+      const type = body && body.type !== undefined ? ` type="${body.type}"` : "";
+      const done = (what) => xhrTrace.push(`${p.method} ${p.host}${type} → ${what} (${Math.round(performance.now() - t0)} ms)`);
+      this.addEventListener("load", () => done("HTTP " + this.status));
+      this.addEventListener("error", () => done("network error (status " + this.status + ")"));
+      this.addEventListener("abort", () => done("aborted"));
+      this.addEventListener("timeout", () => done("timeout"));
+      return send.apply(this, arguments);
+    };
+  })();
 
   async function upload(name, blob) {
     if (!(blob instanceof File)) blob = new File([blob], name, { type: "application/octet-stream" });
