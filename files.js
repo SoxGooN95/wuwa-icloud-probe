@@ -14,7 +14,13 @@
 
   const fmtMB = (bytes) => (bytes / 1048576).toFixed(1) + " MB";
   const secs = (t0) => ((performance.now() - t0) / 1000).toFixed(1) + " s";
-  const ckError = (e) => !e ? "unknown error" : [e.ckErrorCode, e.serverErrorCode, e.reason, e.message].filter(Boolean).join(" · ");
+  const ckError = (e) => {
+    if (!e) return "unknown error";
+    const parts = [e.ckErrorCode, e.serverErrorCode, e.reason].filter(Boolean);
+    const first = String(e.message || "").split("\n")[0].slice(0, 160);
+    if (first && !parts.includes(first)) parts.push(first);
+    return [...new Set(parts)].join(" · ");
+  };
 
   async function sha256(blob) {
     const buf = await blob.arrayBuffer();
@@ -73,12 +79,37 @@
     }
   }
 
+  // Diagnosis: 1) record without asset (schema and permissions), 2) record with a 1 KB asset (asset upload path).
+  async function diagnose() {
+    const step = async (label, fields) => {
+      try {
+        const recordName = "diag-" + label;
+        const prev = await db().fetchRecords([recordName]);
+        const rec = { recordType: FILE_TYPE, recordName, fields };
+        if (!prev.hasErrors && prev.records[0]) rec.recordChangeTag = prev.records[0].recordChangeTag;
+        const res = await db().saveRecords([rec]);
+        if (res.hasErrors) throw res.errors[0];
+        log(`Diag ${label}: OK`, "ok");
+        return true;
+      } catch (e) {
+        log(`Diag ${label}: ${ckError(e)}`, "err");
+        return false;
+      }
+    };
+    await step("no-asset", { name: { value: "diag" }, size: { value: 0 }, sha256: { value: "-" } });
+    const tiny = new File([randomBlob(1024)], "diag-1KB.bin", { type: "application/octet-stream" });
+    await step("asset-1KB", { name: { value: "diag-1KB.bin" }, size: { value: 1024 }, sha256: { value: "-" }, file: { value: tiny } });
+  }
+
   async function upload(name, blob) {
+    if (!(blob instanceof File)) blob = new File([blob], name, { type: "application/octet-stream" });
+    let stage = "hash";
     try {
       log(`Hashing ${name} (${fmtMB(blob.size)}) …`);
       const hash = await sha256(blob);
       const recordName = "file-" + name.replace(/[^A-Za-z0-9._-]/g, "_");
       // An existing record with the same name needs its change tag to be overwritten.
+      stage = "check existing";
       const prev = await db().fetchRecords([recordName]);
       const prevTag = !prev.hasErrors && prev.records[0] ? prev.records[0].recordChangeTag : null;
       const record = {
@@ -89,15 +120,17 @@
       if (prevTag) record.recordChangeTag = prevTag;
       const t0 = performance.now();
       log(`Uploading ${name} …`);
+      stage = "save with asset";
       const res = await db().saveRecords([record]);
       if (res.hasErrors) throw res.errors[0];
       const t = secs(t0);
+      stage = "update file list";
       await loadManifest();
       if (!manifest.names.includes(recordName)) { manifest.names.push(recordName); await saveManifest(); }
       render();
       log(`Uploaded ${name}: ${fmtMB(blob.size)} in ${t}.`, "ok");
     } catch (e) {
-      log(`Upload ${name} failed: ${ckError(e)}`, "err");
+      log(`Upload ${name} failed at '${stage}': ${ckError(e)}`, "err");
     }
   }
 
@@ -150,6 +183,7 @@
       if (file) upload(file.name, file);
       ev.target.value = "";
     });
+    $("diag").onclick = diagnose;
     $("refresh").onclick = async () => {
       try { await loadManifest(); render(); log("File list loaded.", "ok"); } catch (e) { log("File list failed: " + ckError(e), "err"); }
     };
